@@ -1,10 +1,17 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, make_response
 import sqlite3
+import random
+import string
 
 app = Flask(__name__)
 
 connect = sqlite3.connect('users.db')
-connect.execute('CREATE TABLE IF NOT EXISTS users (email TEXT, password TEXT)')
+connect.execute('CREATE TABLE IF NOT EXISTS users (email TEXT, password TEXT, sessionId TEXT)')
+
+# generating random session id
+def generateRandomNo(n):
+    return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(n))
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -38,7 +45,13 @@ def login():
             if cursor.fetchall() !=[]:
                 cursor.execute('SELECT * from users WHERE email=? AND password=?', (email, password))
                 if cursor.fetchall() != []:
-                    return "Login Successfull"
+                    sessionId = generateRandomNo(30)
+                    cursor.execute('UPDATE users SET sessionID=? WHERE email=?', (sessionId, email))
+                    users.commit()
+
+                    response = make_response("Login Successfull")
+                    response.set_cookie('sessionId', sessionId)
+                    return response
                 else:
                     return "Invalid Password"
             else:
